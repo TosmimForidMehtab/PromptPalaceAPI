@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlmodel
+psycopg2-binary
+bcrypt
+python-jose
+pydantic
+imagekitio
+pytest
+httpx
+alembic
+passlib
+python-multipart
