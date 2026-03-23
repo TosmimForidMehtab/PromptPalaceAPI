@@ -5,6 +5,7 @@ psycopg2-binary
 bcrypt
 python-jose
 pydantic
+pydantic-settings
 imagekitio
 pytest
 httpx

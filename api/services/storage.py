@@ -11,9 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 imagekit = ImageKit(
-    private_key=settings.IMAGEKIT_PRIVATE_KEY,
-    public_key=settings.IMAGEKIT_PUBLIC_KEY,
-    url_endpoint=settings.IMAGEKIT_URL_ENDPOINT,
+    private_key=settings.IMAGEKIT_PRIVATE_KEY
 )
 
 PUBLIC_FOLDER = "public/uploads"
@@ -28,38 +26,21 @@ async def upload_files(files: List[UploadFile]) -> List[str]:
 
 
 async def upload_file(file: UploadFile) -> str:
-    # Ensure public folder exists
-    os.makedirs(PUBLIC_FOLDER, exist_ok=True)
-
-    # Create temp file in public folder
-    temp_suffix = Path(file.filename).suffix  # Preserve original extension
-    with tempfile.NamedTemporaryFile(
-        dir=PUBLIC_FOLDER,
-        suffix=temp_suffix,
-        delete=False,  # We'll handle deletion manually
-    ) as tmp:
-        # Write content
-        content = await file.read()
-        tmp.write(content)
-        temp_path = tmp.name
-
     try:
-        # Upload to ImageKit
-        with open(temp_path, "rb") as f:
-            result = imagekit.upload_file(file=f, file_name=file.filename)
+        # 1. Read the file directly into memory
+        content = await file.read()
 
-        # Option 1: Keep the file in public folder (return both URLs)
-        public_url = f"/uploads/{os.path.basename(temp_path)}"
-
-        # Option 2: Delete after upload (recommended)
-        os.unlink(temp_path)
-
+        # 2. Upload directly to ImageKit using the new SDK syntax
+        result = imagekit.files.upload(
+            file=content, 
+            file_name=file.filename
+        )
+        
+        # result.url contains the public URL provided by ImageKit
         return result.url
 
     except Exception as e:
-        # Clean up on error
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+        logger.error(f"ImageKit upload failed: {e}")
         raise
 
 

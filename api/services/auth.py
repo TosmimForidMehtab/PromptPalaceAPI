@@ -1,4 +1,4 @@
-from passlib.hash import bcrypt
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException
@@ -12,11 +12,24 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    # Convert the string password to bytes
+    password_bytes = password.encode('utf-8')
+    
+    # Generate a salt and hash the password
+    salt = bcrypt.gensalt()
+    hashed_password_bytes = bcrypt.hashpw(password=password_bytes, salt=salt)
+    
+    # Decode back to a string to safely store in your database (e.g., SQLAlchemy VARCHAR)
+    return hashed_password_bytes.decode('utf-8')
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return bcrypt.verify(password, password_hash)
+    # Convert both the provided password and the stored hash into bytes
+    password_bytes = password.encode('utf-8')
+    hash_bytes = password_hash.encode('utf-8')
+    
+    # checkpw safely compares the two
+    return bcrypt.checkpw(password=password_bytes, hashed_password=hash_bytes)
 
 
 def create_access_token(data: dict, expires_minutes: int = 30) -> str:
