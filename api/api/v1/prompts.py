@@ -75,13 +75,13 @@ def list_prompts(
     query = (
         db.query(
             Prompt,
-            User.email,
+            User,
             func.sum(case((Vote.is_upvote == True, 1), else_=0)).label("upvotes"),
             func.sum(case((Vote.is_upvote == False, 1), else_=0)).label("downvotes"),
         )
         .join(User, User.id == Prompt.user_id)
         .outerjoin(Vote, Vote.prompt_id == Prompt.id)
-        .group_by(Prompt.id, User.email)
+        .group_by(Prompt.id, User.id)
     )
 
     # Apply Filters
@@ -108,7 +108,7 @@ def list_prompts(
     results = query.offset((page - 1) * limit).limit(limit).all()
 
     prompts = []
-    for prompt, email, upvotes, downvotes in results:
+    for prompt, user, upvotes, downvotes in results:
         prompts.append(
             {
                 "id": prompt.id,
@@ -117,7 +117,10 @@ def list_prompts(
                 "tags": prompt.tags,
                 "media_urls": prompt.media_urls,
                 "created_at": prompt.created_at,
-                "author": email,
+                "author": {
+                    "name": user.name,
+                    "imageUrl": user.profile_image,
+                },
                 "upvotes": upvotes or 0,
                 "downvotes": downvotes or 0,
             }
@@ -170,6 +173,53 @@ def update_prompt(
 
     return ResponseModel(
         status="success", message="Prompt updated successfully.", data={"id": prompt.id}
+    )
+
+
+@router.get("/prompts/{prompt_id}/", status_code=status.HTTP_200_OK)
+def get_prompt_details(
+    prompt_id: int,
+    db: Session = Depends(get_session),
+):
+    """Get detailed information about a specific prompt by ID."""
+    result = (
+        db.query(
+            Prompt,
+            User,
+            func.sum(case((Vote.is_upvote == True, 1), else_=0)).label("upvotes"),
+            func.sum(case((Vote.is_upvote == False, 1), else_=0)).label("downvotes"),
+        )
+        .join(User, User.id == Prompt.user_id)
+        .outerjoin(Vote, Vote.prompt_id == Prompt.id)
+        .filter(Prompt.id == prompt_id)
+        .group_by(Prompt.id, User.id)
+        .first()
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Prompt not found.")
+
+    prompt, user, upvotes, downvotes = result
+    prompt_data = {
+        "id": prompt.id,
+        "title": prompt.title,
+        "description": prompt.description,
+        "prompt_text": prompt.prompt_text,
+        "tags": prompt.tags,
+        "media_urls": prompt.media_urls,
+        "created_at": prompt.created_at,
+        "author": {
+            "name": user.name,
+            "imageUrl": user.profile_image,
+        },
+        "upvotes": upvotes or 0,
+        "downvotes": downvotes or 0,
+    }
+
+    return ResponseModel(
+        status="success",
+        message="Prompt details retrieved successfully.",
+        data={"prompt": prompt_data},
     )
 
 
