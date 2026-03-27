@@ -18,6 +18,11 @@ PUBLIC_ENDPOINTS = [
     ("GET", "/api/v1/prompts/"),
 ]
 
+# Public path prefixes (for paths with dynamic parameters like /api/v1/prompts/123/)
+PUBLIC_PATH_PREFIXES = [
+    ("GET", "/api/v1/prompts/"),  # Allows /api/v1/prompts/{prompt_id}/
+]
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -31,6 +36,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Check for public path + method combinations
         if (method, path) in PUBLIC_ENDPOINTS:
             return await call_next(request)
+
+        # Check for public path prefixes (for paths with dynamic parameters)
+        for public_method, public_prefix in PUBLIC_PATH_PREFIXES:
+            if method == public_method and path.startswith(public_prefix):
+                return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
