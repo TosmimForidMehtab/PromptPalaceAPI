@@ -4,6 +4,7 @@ from starlette.responses import JSONResponse
 from jose import jwt, JWTError
 from api.core.config import settings
 
+# Paths that are completely public (no auth required)
 EXCLUDED_PATHS = [
     "/api/v1/login/",
     "/api/v1/register/",
@@ -12,11 +13,23 @@ EXCLUDED_PATHS = [
     "/redoc",
 ]
 
+# Path + method combinations that are public (e.g., GET /prompts is public, but POST/PUT/DELETE require auth)
+PUBLIC_ENDPOINTS = [
+    ("GET", "/api/v1/prompts/"),
+]
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
+        method = request.method
+
+        # Check for completely public paths
         if any(path.startswith(p) for p in EXCLUDED_PATHS):
+            return await call_next(request)
+
+        # Check for public path + method combinations
+        if (method, path) in PUBLIC_ENDPOINTS:
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")

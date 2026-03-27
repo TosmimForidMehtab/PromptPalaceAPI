@@ -21,15 +21,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Prompt Marketplace API", lifespan=lifespan)
 
+# AuthMiddleware must be added BEFORE CORSMiddleware
+# This ensures CORS headers are added to ALL responses including auth errors
+app.add_middleware(AuthMiddleware)
+
 # Configure CORS with allowed origins from environment variable
+# CORSMiddleware must be last to wrap all other middleware responses
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-app.add_middleware(AuthMiddleware)
 app.include_router(prompts.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
